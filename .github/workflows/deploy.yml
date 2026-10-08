@@ -1,0 +1,21 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      # Placeholder deploy steps — actual provider (Render/AWS) credentials
+      # and deploy commands are added once hosting is finalized (Milestone 44).
+      # Kept as an explicit, documented no-op rather than a fake success step,
+      # so it's clear in the Actions log that deploy is not yet wired up.
+      - name: Deploy target not yet configured
+        run: |
+          echo "Deployment target (Render/AWS) not yet configured."
+          echo "See docs/architecture/deployment.md once Milestone 44 lands."
