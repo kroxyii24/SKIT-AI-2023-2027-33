@@ -91,7 +91,13 @@ def get_git_metrics(interval="weekly"):
                 continue
 
             _, sha, name, date_str, message = parts
-            if "bot" in name.lower() or "github-actions" in name.lower():
+            if (
+                "bot" in name.lower()
+                or "github-actions" in name.lower()
+                or name.strip().casefold() not in {
+                    "eklavya gupta", "gagan sharma"
+                }
+            ):
                 author = None
                 continue
 
@@ -363,7 +369,13 @@ def get_git_metrics_for_dates(start_date, end_date):
                 author = None
                 continue
             _, sha, name, date_str, message = parts
-            if "bot" in name.lower() or "github-actions" in name.lower():
+            if (
+                "bot" in name.lower()
+                or "github-actions" in name.lower()
+                or name.strip().casefold() not in {
+                    "eklavya gupta", "gagan sharma"
+                }
+            ):
                 author = None
                 continue
             author = name
