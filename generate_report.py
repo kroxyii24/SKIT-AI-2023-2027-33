@@ -337,6 +337,95 @@ def generate_pdf(interval="weekly"):
     print(f"Found {len(students)} contributor(s) and {total_commits} total commits.")
 
 
+def get_git_metrics_for_dates(start_date, end_date):
+    args = [
+        "git", "log", "--no-merges",
+        "--pretty=format:COMMIT|||%h|||%an|||%ad|||%s",
+        "--date=short", "--numstat",
+        f"--since={start_date.isoformat()} 00:00:00",
+        f"--until={end_date.isoformat()} 23:59:59",
+    ]
+    output = subprocess.check_output(args, text=True, stderr=subprocess.PIPE)
+    students = defaultdict(lambda: {
+        "commits": 0, "added": 0, "deleted": 0, "active_days": set()
+    })
+    timeline = defaultdict(lambda: defaultdict(int))
+    logs = defaultdict(list)
+    author = None
+
+    for raw in output.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if line.startswith("COMMIT|||"):
+            parts = line.split("|||", 4)
+            if len(parts) < 5:
+                author = None
+                continue
+            _, sha, name, date_str, message = parts
+            if "bot" in name.lower() or "github-actions" in name.lower():
+                author = None
+                continue
+            author = name
+            students[author]["commits"] += 1
+            students[author]["active_days"].add(date_str)
+            logs[author].append((date_str, sha, message))
+            timeline[date_str][author] += 1
+        elif author:
+            parts = line.split()
+            if len(parts) >= 3 and parts[0].isdigit() and parts[1].isdigit():
+                students[author]["added"] += int(parts[0])
+                students[author]["deleted"] += int(parts[1])
+
+    scope = f"{start_date:%d %b %Y} - {end_date:%d %b %Y}"
+    return students, timeline, logs, scope
+
+
+def generate_historical_reports(start_date, end_date):
+    start = datetime.date.fromisoformat(start_date)
+    end = datetime.date.fromisoformat(end_date)
+    if end < start:
+        raise ValueError("End date must not be earlier than start date.")
+
+    output_dir = os.path.join(os.getcwd(), "weekly_reports")
+    os.makedirs(output_dir, exist_ok=True)
+    repo, _ = get_repo_info()
+    current = start
+    week_number = 1
+
+    while current <= end:
+        period_end = min(current + datetime.timedelta(days=6), end)
+        print(f"\nGenerating Week {week_number}: {current} to {period_end}")
+
+        original_metrics = get_git_metrics
+
+        def period_metrics(interval="weekly", _start=current, _end=period_end):
+            return get_git_metrics_for_dates(_start, _end)
+
+        globals()["get_git_metrics"] = period_metrics
+        try:
+            generate_pdf("weekly")
+        finally:
+            globals()["get_git_metrics"] = original_metrics
+
+        generated_date = datetime.date.today().isoformat()
+        default_name = f"{repo}_Weekly_Progress_Report_Form-3_{generated_date}.pdf"
+        if os.path.exists(default_name):
+            destination = os.path.join(
+                output_dir,
+                f"Week_{week_number:02d}_{current:%d%b}_{period_end:%d%b}_{period_end:%Y}.pdf"
+            )
+            os.replace(default_name, destination)
+            print(f"[SAVED] {destination}")
+
+        current = period_end + datetime.timedelta(days=1)
+        week_number += 1
+
 if __name__ == "__main__":
     interval = sys.argv[1].lower() if len(sys.argv) > 1 else "weekly"
-    generate_pdf(interval)
+    if interval == "history":
+        start = sys.argv[2] if len(sys.argv) > 2 else "2026-10-09"
+        end = sys.argv[3] if len(sys.argv) > 3 else datetime.date.today().isoformat()
+        generate_historical_reports(start, end)
+    else:
+        generate_pdf(interval)
