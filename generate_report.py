@@ -41,12 +41,13 @@ def get_repo_info():
     return repo_name, branch
 
 
+
 def get_git_metrics(interval="weekly"):
     today = datetime.date.today()
     args = [
         "git", "log", "--no-merges",
         "--pretty=format:COMMIT|||%h|||%an|||%ad|||%s",
-        "--date=short", "--numstat"
+        "--date=short", "--numstat",
     ]
 
     if interval == "weekly":
@@ -72,12 +73,17 @@ def get_git_metrics(interval="weekly"):
 
     students = defaultdict(
         lambda: {
-            "commits": 0, "added": 0, "deleted": 0, "active_days": set()
+            "commits": 0,
+            "added": 0,
+            "deleted": 0,
+            "active_days": set(),
         }
     )
     timeline = defaultdict(lambda: defaultdict(int))
     logs = defaultdict(list)
     author = None
+
+    allowed_students = {"eklavya gupta", "gagan sharma"}
 
     for raw in output.splitlines():
         line = raw.strip()
@@ -91,36 +97,46 @@ def get_git_metrics(interval="weekly"):
                 continue
 
             _, sha, name, date_str, message = parts
+
             if (
                 "bot" in name.lower()
                 or "github-actions" in name.lower()
-                or name.strip().casefold() not in {
-                    "eklavya gupta", "gagan sharma"
-                }
+                or name.strip().casefold() not in allowed_students
             ):
                 author = None
                 continue
 
-            author = name
+            author = name.strip()
             students[author]["commits"] += 1
             students[author]["active_days"].add(date_str)
             logs[author].append((date_str, sha, message))
 
             try:
-                dt = datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
+                dt = datetime.datetime.strptime(
+                    date_str, "%Y-%m-%d"
+                ).date()
+
                 if interval == "weekly":
                     period = dt.strftime("%a (%b %d)")
                 elif interval == "monthly":
-                    period = f"{dt.isocalendar()[0]}-W{dt.isocalendar()[1]:02d}"
+                    period = (
+                        f"{dt.isocalendar()[0]}-"
+                        f"W{dt.isocalendar()[1]:02d}"
+                    )
                 else:
                     period = dt.strftime("%Y-%m")
+
                 timeline[period][author] += 1
             except ValueError:
                 pass
 
         elif author:
             parts = line.split()
-            if len(parts) >= 3 and parts[0].isdigit() and parts[1].isdigit():
+            if (
+                len(parts) >= 3
+                and parts[0].isdigit()
+                and parts[1].isdigit()
+            ):
                 students[author]["added"] += int(parts[0])
                 students[author]["deleted"] += int(parts[1])
 
@@ -343,6 +359,7 @@ def generate_pdf(interval="weekly"):
     print(f"Found {len(students)} contributor(s) and {total_commits} total commits.")
 
 
+
 def get_git_metrics_for_dates(start_date, end_date):
     args = [
         "git", "log", "--no-merges",
@@ -351,46 +368,65 @@ def get_git_metrics_for_dates(start_date, end_date):
         f"--since={start_date.isoformat()} 00:00:00",
         f"--until={end_date.isoformat()} 23:59:59",
     ]
-    output = subprocess.check_output(args, text=True, stderr=subprocess.PIPE)
-    students = defaultdict(lambda: {
-        "commits": 0, "added": 0, "deleted": 0, "active_days": set()
-    })
+
+    output = subprocess.check_output(
+        args, text=True, stderr=subprocess.PIPE
+    )
+
+    students = defaultdict(
+        lambda: {
+            "commits": 0,
+            "added": 0,
+            "deleted": 0,
+            "active_days": set(),
+        }
+    )
     timeline = defaultdict(lambda: defaultdict(int))
     logs = defaultdict(list)
     author = None
+
+    allowed_students = {"eklavya gupta", "gagan sharma"}
 
     for raw in output.splitlines():
         line = raw.strip()
         if not line:
             continue
+
         if line.startswith("COMMIT|||"):
             parts = line.split("|||", 4)
             if len(parts) < 5:
                 author = None
                 continue
+
             _, sha, name, date_str, message = parts
+
             if (
                 "bot" in name.lower()
                 or "github-actions" in name.lower()
-                or name.strip().casefold() not in {
-                    "eklavya gupta", "gagan sharma"
-                }
+                or name.strip().casefold() not in allowed_students
             ):
                 author = None
                 continue
-            author = name
+
+            author = name.strip()
             students[author]["commits"] += 1
             students[author]["active_days"].add(date_str)
             logs[author].append((date_str, sha, message))
             timeline[date_str][author] += 1
+
         elif author:
             parts = line.split()
-            if len(parts) >= 3 and parts[0].isdigit() and parts[1].isdigit():
+            if (
+                len(parts) >= 3
+                and parts[0].isdigit()
+                and parts[1].isdigit()
+            ):
                 students[author]["added"] += int(parts[0])
                 students[author]["deleted"] += int(parts[1])
 
     scope = f"{start_date:%d %b %Y} - {end_date:%d %b %Y}"
     return students, timeline, logs, scope
+
 
 
 def generate_historical_reports(start_date, end_date):
@@ -425,8 +461,8 @@ def generate_historical_reports(start_date, end_date):
         if os.path.exists(default_name):
             destination = os.path.join(
                 output_dir,
-                f"Week_{week_number:02d}_{current:%d%b}_{period_end:%d%b}_{period_end:%Y}.pdf"
-            )
+                f"{repo}_Weekly_Progress_Report_Form-3_{period_end.isoformat()}.pdf"
+                )
             os.replace(default_name, destination)
             print(f"[SAVED] {destination}")
 

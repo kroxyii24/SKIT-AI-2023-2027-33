@@ -31,10 +31,16 @@ jobs:
       - name: Generate weekly report
         run: python generate_report.py weekly
 
+      
       - name: Archive report
         run: |
           mkdir -p weekly_reports
-          mv *_Weekly_Progress_Report_Form-3_*.pdf weekly_reports/
+          for file in *_Weekly_Progress_Report_Form-3_*.pdf; do
+            if [ -f "$file" ]; then
+              mv "$file" weekly_reports/
+            fi
+          done
+
 
       - name: Commit and push report
         run: |
