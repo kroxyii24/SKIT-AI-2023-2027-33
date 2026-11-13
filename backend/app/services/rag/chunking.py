@@ -20,6 +20,10 @@ class Chunk:
 
 def split_into_sentences(text: str) -> list[str]:
     text = re.sub(r"\s+", " ", text).strip()
+
+    if not text:
+        return []
+
     return re.split(r"(?<=[.!?])\s+", text)
 
 

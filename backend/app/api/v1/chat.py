@@ -19,12 +19,19 @@ def send_message(
     db: Session = Depends(get_db),
     user: TokenPayload = Depends(get_current_user),
 ):
+    session = db.get(ChatSession, payload.session_id) if payload.session_id else None
+
+    if session is None:
+        session = ChatSession(user_id=user.sub, language=payload.language)
+        db.add(session)
+        db.flush()
     # 0. Input sanitization / prompt-injection defense — runs before anything
     # else touches this message.
     sanitization = sanitize_user_message(payload.message)
     if not sanitization.is_safe:
+        db.commit()
         return ChatResponse(
-            session_id=payload.session_id,
+            session_id=session.id,
             answer=(
                 "I couldn't process that message. Please rephrase your health question "
                 "in plain language."

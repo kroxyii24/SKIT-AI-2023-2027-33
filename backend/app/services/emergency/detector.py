@@ -39,7 +39,7 @@ EMERGENCY_PATTERNS = [
     r"\bheart attack\b", r"\bsevere allergic reaction\b", r"\banaphyla\w*\b",
     r"\baccident\b.*\b(bleeding|unconscious|not moving)\b",
     r"\bin labou?r\b.*\b(pain|bleeding|emergency)\b",
-    r"\bbaby not moving\b", r"\bseizure\b", r"\bfit(ting)?\b.*\bunconscious\b",
+    r"\bbaby\b.*\bnot moving\b", r"\bseizure\b", r"\bfit(ting)?\b.*\bunconscious\b",
 ]
 
 _COMPILED_PATTERNS = [re.compile(p, re.IGNORECASE) for p in EMERGENCY_PATTERNS]

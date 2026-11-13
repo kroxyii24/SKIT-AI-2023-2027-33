@@ -17,6 +17,7 @@ from app.main import app
 from app.db.session import get_db
 from app.models.base import Base
 from app.models import domain  # noqa: F401 ensures models are registered
+from app.api.v1 import auth
 
 SQLALCHEMY_TEST_URL = "sqlite:///:memory:"
 
@@ -38,9 +39,31 @@ def db_session():
         session.close()
         Base.metadata.drop_all(bind=engine)
 
+@pytest.fixture
+def mock_otp_services(monkeypatch):
+    class FakeRedis:
+        def __init__(self):
+            self.store = {}
+
+        def setex(self, key, expiry, value):
+            self.store[key] = value
+
+        def get(self, key):
+            return self.store.get(key)
+
+        def delete(self, key):
+            self.store.pop(key, None)
+
+    fake_redis = FakeRedis()
+    monkeypatch.setattr(auth.limiter, "enabled", False)
+    monkeypatch.setattr(auth, "redis_client", fake_redis)
+    monkeypatch.setattr(auth, "generate_otp", lambda: "123456")
+    monkeypatch.setattr(auth, "send_otp_email", lambda email, otp: None)
+
+    return fake_redis
 
 @pytest.fixture(scope="function")
-def client(db_session):
+def client(db_session,mock_otp_services):
     def override_get_db():
         try:
             yield db_session
