@@ -1,10 +1,9 @@
-"use client";
-
 import { create } from "zustand";
 
 interface AuthState {
   isAuthenticated: boolean;
   setAuthenticated: (authenticated: boolean) => void;
+  clearAuth: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -15,4 +14,13 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   setAuthenticated: (authenticated) =>
     set({ isAuthenticated: authenticated }),
+
+  clearAuth: () => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+    }
+
+    set({ isAuthenticated: false });
+  },
 }));

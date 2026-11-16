@@ -1,3 +1,4 @@
+import { useAuthStore } from "@/lib/authStore";
 import axios, {
   AxiosError,
   InternalAxiosRequestConfig,
@@ -41,8 +42,7 @@ apiClient.interceptors.response.use(
     }
 
     if (error.response.status === 401 && typeof window !== "undefined") {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
+      useAuthStore.getState().clearAuth();
     }
 
     return Promise.reject(error);
